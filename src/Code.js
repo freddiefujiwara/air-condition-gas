@@ -125,7 +125,7 @@ function doGet(e) {
     if (params.s === "status") {
       setStatus(params.t);
       output.setContent("OK");
-      return;
+      return output;
     }
     appendConditionRow({
       temperature: params.t,

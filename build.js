@@ -9,5 +9,9 @@ const distPath = path.join(distDir, "Code.gs");
 const distManifestPath = path.join(distDir, "appsscript.json");
 
 fs.mkdirSync(distDir, { recursive: true });
-fs.copyFileSync(srcPath, distPath);
+const source = fs.readFileSync(srcPath, "utf8");
+const compiled = source
+  .replace(/^export\s+/gm, "")
+  .replace(/^export\s*\{[^}]*\};?\s*$/gm, "");
+fs.writeFileSync(distPath, compiled);
 fs.copyFileSync(appsscriptPath, distManifestPath);

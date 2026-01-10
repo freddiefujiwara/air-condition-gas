@@ -12,11 +12,13 @@ const SWITCHBOT = {
   customDevicePath: "-d/03-202401251013-58699638",
 };
 
-const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
-const sheets = {
-  conditions: spreadsheet.getSheetByName(SHEET_NAMES.conditions),
-  status: spreadsheet.getSheetByName(SHEET_NAMES.status),
-  setting: spreadsheet.getSheetByName(SHEET_NAMES.setting),
+const getSheets = () => {
+  const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
+  return {
+    conditions: spreadsheet.getSheetByName(SHEET_NAMES.conditions),
+    status: spreadsheet.getSheetByName(SHEET_NAMES.status),
+    setting: spreadsheet.getSheetByName(SHEET_NAMES.setting),
+  };
 };
 
 const buildAcUrl = (command) =>
@@ -25,23 +27,24 @@ const buildAcUrl = (command) =>
 const buildCustomUrl = (command) =>
   `${SWITCHBOT.customBaseUrl}/${SWITCHBOT.customDevicePath}/-c/${command}`;
 
-const getConditionsLastRow = () => sheets.conditions.getLastRow();
+const getConditionsLastRow = () => getSheets().conditions.getLastRow();
 
 const appendConditionRow = ({ temperature, humidity }) => {
   const rowIndex = getConditionsLastRow() + 1;
+  const sheets = getSheets();
   sheets.conditions.getRange(rowIndex, 1).setValue(new Date());
   sheets.conditions.getRange(rowIndex, 2).setValue(temperature ?? 0);
   sheets.conditions.getRange(rowIndex, 3).setValue(humidity ?? 0);
 };
 
 const setStatus = (nextStatus) => {
-  sheets.status.getRange(1, 1).setValue(nextStatus);
+  getSheets().status.getRange(1, 1).setValue(nextStatus);
 };
 
-const getStatus = () => sheets.status.getRange(1, 1).getValue();
+const getStatus = () => getSheets().status.getRange(1, 1).getValue();
 
 const getSettings = () => {
-  const values = sheets.setting.getDataRange().getValues();
+  const values = getSheets().setting.getDataRange().getValues();
   const headers = values.shift() ?? [];
   const row = values.shift() ?? [];
 
@@ -109,7 +112,7 @@ const AC_ACTIONS = [
   },
 ];
 
-function doGet(e) {
+export function doGet(e) {
   const output = ContentService.createTextOutput();
   const params = e?.parameter ?? {};
 
@@ -130,6 +133,7 @@ function doGet(e) {
 
   output.setMimeType(ContentService.MimeType.JAVASCRIPT);
   const lastRow = getConditionsLastRow();
+  const sheets = getSheets();
   const lastColumn = sheets.conditions.getLastColumn();
   const getRowValues = (row) =>
     sheets.conditions.getRange(row, 1, 1, lastColumn).getValues()[0];
@@ -144,7 +148,8 @@ function doGet(e) {
   return output;
 }
 
-function turnOnAC() {
+export function turnOnAC() {
+  const sheets = getSheets();
   const temperature = Number(
     sheets.conditions.getRange(getConditionsLastRow(), 2).getValue()
   );

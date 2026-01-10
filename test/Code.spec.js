@@ -1,11 +1,6 @@
-import fs from "fs";
-import path from "path";
-import vm from "vm";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
-const codePath = path.resolve(process.cwd(), "src/Code.js");
-
-const loadCode = ({
+const loadCode = async ({
   conditionsLastRow = 1,
   temperature = 0,
   conditionsValues = null,
@@ -118,12 +113,15 @@ const loadCode = ({
     Logger,
   };
 
-  const context = vm.createContext(sandbox);
-  const code = fs.readFileSync(codePath, "utf8");
-  vm.runInContext(code, context, { filename: "Code.js" });
+  vi.stubGlobal("SpreadsheetApp", sandbox.SpreadsheetApp);
+  vi.stubGlobal("ContentService", sandbox.ContentService);
+  vi.stubGlobal("UrlFetchApp", sandbox.UrlFetchApp);
+  vi.stubGlobal("Logger", sandbox.Logger);
+  await vi.resetModules();
+  const module = await import("../src/Code.js");
 
   return {
-    context,
+    module,
     output,
     outputState,
     conditionsSheet,
@@ -135,6 +133,11 @@ const loadCode = ({
     conditionsRangeCalls,
   };
 };
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+  vi.resetModules();
+});
 
 const buildSettings = (overrides = {}) => {
   const defaults = {
@@ -155,10 +158,10 @@ const settingsValuesFrom = (settings) => {
 };
 
 describe("doGet", () => {
-  it("writes status and exits when status param is provided", () => {
-    const { context, statusRange, outputState, output } = loadCode();
+  it("writes status and exits when status param is provided", async () => {
+    const { module, statusRange, outputState, output } = await loadCode();
 
-    const result = context.doGet({
+    const result = module.doGet({
       parameter: {
         s: "status",
         t: "hot",
@@ -170,12 +173,12 @@ describe("doGet", () => {
     expect(result).toBe(output);
   });
 
-  it("appends condition data when no callback is set", () => {
-    const { context, conditionsSheet, outputState } = loadCode({
+  it("appends condition data when no callback is set", async () => {
+    const { module, conditionsSheet, outputState } = await loadCode({
       conditionsLastRow: 2,
     });
 
-    const result = context.doGet({
+    const result = module.doGet({
       parameter: {
         t: 24,
         h: 60,
@@ -189,12 +192,12 @@ describe("doGet", () => {
     expect(result).not.toBeUndefined();
   });
 
-  it("defaults missing condition values when appending", () => {
-    const { context, conditionsRanges } = loadCode({
+  it("defaults missing condition values when appending", async () => {
+    const { module, conditionsRanges } = await loadCode({
       conditionsLastRow: 1,
     });
 
-    context.doGet({
+    module.doGet({
       parameter: {},
     });
 
@@ -207,17 +210,17 @@ describe("doGet", () => {
     expect(humidityRange.setValue).toHaveBeenCalledWith(0);
   });
 
-  it("returns JSONP when callback is provided", () => {
+  it("returns JSONP when callback is provided", async () => {
     const settings = buildSettings({ hot_buttom: 19 });
-    const { context, conditionsSheet, outputState, statusRange, settingSheet } =
-      loadCode({
+    const { module, conditionsSheet, outputState, statusRange, settingSheet } =
+      await loadCode({
         conditionsLastRow: 4,
         conditionsHeaders: ["Date", "Temperature", "Humid"],
         conditionsRowValues: [new Date(0), 24.5, 38],
         settingsValues: settingsValuesFrom(settings),
     });
 
-    context.doGet({
+    module.doGet({
       parameter: {
         callback: "cb",
       },
@@ -244,14 +247,14 @@ describe("doGet", () => {
 });
 
 describe("settings payload", () => {
-  it("returns empty settings when none exist", () => {
-    const { context, outputState, settingSheet } = loadCode({
+  it("returns empty settings when none exist", async () => {
+    const { module, outputState, settingSheet } = await loadCode({
       conditionsHeaders: ["Date", "Temperature", "Humid"],
       conditionsRowValues: [new Date(0), 24.5, 38],
       conditionsLastRow: 2,
     });
 
-    context.doGet({
+    module.doGet({
       parameter: {
         callback: "cb",
       },
@@ -271,15 +274,15 @@ describe("settings payload", () => {
 });
 
 describe("turnOnAC", () => {
-  it("turns on hot mode when temperature is below hot_buttom", () => {
+  it("turns on hot mode when temperature is below hot_buttom", async () => {
     const settings = buildSettings({ hot_buttom: 19, hot: 23 });
-    const { context, UrlFetchApp, statusRange, Logger } = loadCode({
+    const { module, UrlFetchApp, statusRange, Logger } = await loadCode({
       temperature: 18,
       settingsValues: settingsValuesFrom(settings),
       statusValue: "off",
     });
 
-    context.turnOnAC();
+    module.turnOnAC();
 
     expect(UrlFetchApp.fetch).toHaveBeenCalledWith(
       "http://a.ze.gs/switchbot-ac/-d/02-202307290753-22894539/-a/23,5,1,on"
@@ -292,15 +295,15 @@ describe("turnOnAC", () => {
     expect(Logger.log).toHaveBeenCalledWith(18);
   });
 
-  it("turns off hot mode when temperature exceeds hot_up", () => {
+  it("turns off hot mode when temperature exceeds hot_up", async () => {
     const settings = buildSettings({ hot_up: 27 });
-    const { context, UrlFetchApp, statusRange, Logger } = loadCode({
+    const { module, UrlFetchApp, statusRange, Logger } = await loadCode({
       temperature: 28,
       settingsValues: settingsValuesFrom(settings),
       statusValue: "hot",
     });
 
-    context.turnOnAC();
+    module.turnOnAC();
 
     expect(UrlFetchApp.fetch).toHaveBeenCalledWith(
       "http://a.ze.gs/switchbot-ac/-d/02-202307290753-22894539/-a/25,5,1,off"
@@ -313,15 +316,15 @@ describe("turnOnAC", () => {
     expect(Logger.log).toHaveBeenCalledWith(28);
   });
 
-  it("turns off cool mode when temperature is below cool_buttom", () => {
+  it("turns off cool mode when temperature is below cool_buttom", async () => {
     const settings = buildSettings({ cool_buttom: 17 });
-    const { context, UrlFetchApp, statusRange, Logger } = loadCode({
+    const { module, UrlFetchApp, statusRange, Logger } = await loadCode({
       temperature: 16,
       settingsValues: settingsValuesFrom(settings),
       statusValue: "cool",
     });
 
-    context.turnOnAC();
+    module.turnOnAC();
 
     expect(UrlFetchApp.fetch).toHaveBeenCalledWith(
       "http://a.ze.gs/switchbot-ac/-d/02-202307290753-22894539/-a/25,2,1,off"
@@ -334,15 +337,15 @@ describe("turnOnAC", () => {
     expect(Logger.log).toHaveBeenCalledWith(16);
   });
 
-  it("turns on cool mode when temperature exceeds cool_up", () => {
+  it("turns on cool mode when temperature exceeds cool_up", async () => {
     const settings = buildSettings({ cool_up: 26, cool: 25 });
-    const { context, UrlFetchApp, statusRange, Logger } = loadCode({
+    const { module, UrlFetchApp, statusRange, Logger } = await loadCode({
       temperature: 27,
       settingsValues: settingsValuesFrom(settings),
       statusValue: "off",
     });
 
-    context.turnOnAC();
+    module.turnOnAC();
 
     expect(UrlFetchApp.fetch).toHaveBeenCalledWith(
       "http://a.ze.gs/switchbot-ac/-d/02-202307290753-22894539/-a/25,2,1,on"

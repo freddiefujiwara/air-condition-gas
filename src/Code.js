@@ -67,7 +67,7 @@ const serializeConditions = (values) => {
   return values.map((row) =>
     row.reduce((acc, column, index) => {
       const header = headers[index];
-      if (column instanceof Date) {
+      if (header === "Date") {
         acc[header] = formatJapanTime(column);
       } else {
         acc[header] = column;

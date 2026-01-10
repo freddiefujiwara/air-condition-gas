@@ -120,13 +120,12 @@ export function doGet(e) {
     output.setMimeType(ContentService.MimeType.TEXT);
     if (params.s === "status") {
       setStatus(params.t);
-      output.setContent("OK");
-      return output;
+    } else {
+      appendConditionRow({
+        temperature: params.t,
+        humidity: params.h,
+      });
     }
-    appendConditionRow({
-      temperature: params.t,
-      humidity: params.h,
-    });
     output.setContent("OK");
     return output;
   }

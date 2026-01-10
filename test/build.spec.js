@@ -35,7 +35,7 @@ describe("build", () => {
       [
         "function doGet() {}",
         "const value = 1;",
-        "doGet as handler;",
+        "{ doGet as handler };",
       ].join("\n")
     );
     expect(fsModule.copyFileSync).toHaveBeenCalledWith(

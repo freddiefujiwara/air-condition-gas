@@ -131,16 +131,14 @@ function doGet(e) {
   }
 
   output.setMimeType(ContentService.MimeType.JAVASCRIPT);
-  const lastColumn = sheets.conditions.getLastColumn();
-  const headers = sheets.conditions.getRange(1, 1, 1, lastColumn).getValues()[0];
   const lastRow = getConditionsLastRow();
-  const rowValues = sheets.conditions
-    .getRange(lastRow, 1, 1, lastColumn)
-    .getValues()[0];
-  const values = [headers, rowValues];
-  const result = serializeConditions(values);
-  const statusValues = getStatus();
-  const payload = { conditions: result, status: statusValues };
+  const lastColumn = sheets.conditions.getLastColumn();
+  const getRowValues = (row) =>
+    sheets.conditions.getRange(row, 1, 1, lastColumn).getValues()[0];
+  const payload = {
+    conditions: serializeConditions([getRowValues(1), getRowValues(lastRow)]),
+    status: getStatus(),
+  };
   output.setContent(buildJsonpResponse(params.callback, payload));
   return output;
 }

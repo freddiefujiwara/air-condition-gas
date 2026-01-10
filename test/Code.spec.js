@@ -194,7 +194,7 @@ describe("doGet", () => {
       }));
       return `${localized.toLocaleDateString()} ${localized.toLocaleTimeString()}`;
     })();
-    const expected = [{ Date: formatted, Temp: 25 }];
+    const expected = { conditions: [{ Date: formatted, Temp: 25 }] };
     const expectedContent = `cb&&cb(${JSON.stringify(expected)});`;
 
     expect(outputState.content).toBe(expectedContent);

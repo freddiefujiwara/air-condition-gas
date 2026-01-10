@@ -22,12 +22,8 @@ const sheets = {
 const buildAcUrl = (command) =>
   `${SWITCHBOT.acBaseUrl}/${SWITCHBOT.acDevicePath}/-a/${command}`;
 
-const buildCustomUrl = (command, repeat = 1) => {
-  const segments = Array.from({ length: repeat }, () =>
-    `${SWITCHBOT.customDevicePath}/-c/${command}`
-  );
-  return `${SWITCHBOT.customBaseUrl}/${segments.join("/")}`;
-};
+const buildCustomUrl = (command) =>
+  `${SWITCHBOT.customBaseUrl}/${SWITCHBOT.customDevicePath}/-c/${command}`;
 
 const getConditionsLastRow = () => sheets.conditions.getLastRow();
 
@@ -87,7 +83,6 @@ const AC_ACTIONS = [
       temperature <= settings.hot_buttom && statusValue === "off",
     acCommand: ({ settings }) => `${settings.hot},5,1,on`,
     customCommand: "Hot",
-    customRepeat: 2,
     nextStatus: "hot",
   },
   {
@@ -157,9 +152,7 @@ function turnOnAC() {
 
   if (action) {
     UrlFetchApp.fetch(buildAcUrl(action.acCommand({ settings })));
-    UrlFetchApp.fetch(
-      buildCustomUrl(action.customCommand, action.customRepeat ?? 1)
-    );
+    UrlFetchApp.fetch(buildCustomUrl(action.customCommand));
     setStatus(action.nextStatus);
   }
 

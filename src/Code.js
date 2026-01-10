@@ -1,77 +1,166 @@
 const SPREADSHEET_ID = "1RtJaJDjeTK61RYpIR2JS5Jv25RVUrEI3_PYnzAesbFY";
-const sheet = SpreadsheetApp.openById(SPREADSHEET_ID);
-const conditions = sheet.getSheetByName("conditions");
-const status = sheet.getSheetByName("status");
-const setting = sheet.getSheetByName("setting");
-const conditionsLastRow = conditions.getLastRow();
+const SHEET_NAMES = {
+  conditions: "conditions",
+  status: "status",
+  setting: "setting",
+};
+
+const SWITCHBOT = {
+  acBaseUrl: "http://a.ze.gs/switchbot-ac",
+  acDevicePath: "-d/02-202307290753-22894539",
+  customBaseUrl: "http://a.ze.gs/switchbot-custom",
+  customDevicePath: "-d/03-202401251013-58699638",
+};
+
+const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
+const sheets = {
+  conditions: spreadsheet.getSheetByName(SHEET_NAMES.conditions),
+  status: spreadsheet.getSheetByName(SHEET_NAMES.status),
+  setting: spreadsheet.getSheetByName(SHEET_NAMES.setting),
+};
+
+const buildAcUrl = (command) =>
+  `${SWITCHBOT.acBaseUrl}/${SWITCHBOT.acDevicePath}/-a/${command}`;
+
+const buildCustomUrl = (command, repeat = 1) => {
+  const segments = Array.from({ length: repeat }, () =>
+    `${SWITCHBOT.customDevicePath}/-c/${command}`
+  );
+  return `${SWITCHBOT.customBaseUrl}/${segments.join("/")}`;
+};
+
+const getConditionsLastRow = () => sheets.conditions.getLastRow();
+
+const appendConditionRow = ({ temperature, humidity }) => {
+  const rowIndex = getConditionsLastRow() + 1;
+  sheets.conditions.getRange(rowIndex, 1).setValue(new Date());
+  sheets.conditions.getRange(rowIndex, 2).setValue(temperature ?? 0);
+  sheets.conditions.getRange(rowIndex, 3).setValue(humidity ?? 0);
+};
+
+const setStatus = (nextStatus) => {
+  sheets.status.getRange(1, 1).setValue(nextStatus);
+};
+
+const getStatus = () => sheets.status.getRange(1, 1).getValue();
+
+const getSettings = () => {
+  const values = sheets.setting.getDataRange().getValues();
+  const headers = values.shift() ?? [];
+  const row = values.shift() ?? [];
+
+  return headers.reduce((acc, header, index) => {
+    acc[header] = row[index];
+    return acc;
+  }, {});
+};
+
+const formatJapanTime = (value) => {
+  const dt = new Date(
+    new Date(value).toLocaleString("en-US", { timeZone: "Asia/Tokyo" })
+  );
+  return `${dt.toLocaleDateString()} ${dt.toLocaleTimeString()}`;
+};
+
+const serializeConditions = (values) => {
+  const headers = values.shift() ?? [];
+  return values.map((row) =>
+    row.reduce((acc, column, index) => {
+      const header = headers[index];
+      if (header === "Datetime") {
+        acc[header] = formatJapanTime(column);
+      } else {
+        acc[header] = column;
+      }
+      return acc;
+    }, {})
+  );
+};
+
+const buildJsonpResponse = (callback, data) =>
+  `${callback}&&${callback}(${JSON.stringify(data)});`;
+
+const AC_ACTIONS = [
+  {
+    name: "hot_on",
+    shouldRun: ({ temperature, statusValue, settings }) =>
+      temperature <= settings.hot_buttom && statusValue === "off",
+    acCommand: ({ settings }) => `${settings.hot},5,1,on`,
+    customCommand: "Hot",
+    customRepeat: 2,
+    nextStatus: "hot",
+  },
+  {
+    name: "hot_off",
+    shouldRun: ({ temperature, statusValue, settings }) =>
+      temperature >= settings.hot_up && statusValue === "hot",
+    acCommand: () => "25,5,1,off",
+    customCommand: "Off",
+    nextStatus: "off",
+  },
+  {
+    name: "cool_off",
+    shouldRun: ({ temperature, statusValue, settings }) =>
+      temperature <= settings.cool_buttom && statusValue === "cool",
+    acCommand: () => "25,2,1,off",
+    customCommand: "Off",
+    nextStatus: "off",
+  },
+  {
+    name: "cool_on",
+    shouldRun: ({ temperature, statusValue, settings }) =>
+      temperature >= settings.cool_up && statusValue === "off",
+    acCommand: ({ settings }) => `${settings.cool},2,1,on`,
+    customCommand: "Cool",
+    nextStatus: "cool",
+  },
+];
 
 function doGet(e) {
   const output = ContentService.createTextOutput();
+  const params = e?.parameter ?? {};
 
-  if (e.parameter.callback === undefined) {
+  if (params.callback === undefined) {
     output.setMimeType(ContentService.MimeType.TEXT);
-    if ("status" === e.parameter.s) {
-      status.getRange(1, 1).setValue(e.parameter.t);
+    if (params.s === "status") {
+      setStatus(params.t);
       output.setContent("OK");
       return;
     }
-    conditions.getRange(conditionsLastRow + 1, 1).setValue(new Date()); // Datetime
-    conditions.getRange(conditionsLastRow + 1, 2).setValue(e.parameter.t || 0); // Temperature
-    conditions.getRange(conditionsLastRow + 1, 3).setValue(e.parameter.h || 0); // Humidity
-    output.setContent("OK");
-  } else {
-    output.setMimeType(ContentService.MimeType.JAVASCRIPT);
-    const values = conditions.getDataRange().getValues();
-    const headers = values.shift();
-    const result = values.map((row) => {
-      let data = {};
-      row.map((column, index) => {
-        if ("Datetime" === headers[index]) {
-          const dt = new Date(new Date(column).toLocaleString("en-US", {
-            timeZone: "Asia/Tokyo"
-          }));
-          data[headers[index]] = `${dt.toLocaleDateString()} ${dt.toLocaleTimeString()}`;
-        } else {
-          data[headers[index]] = column;
-        }
-      });
-      return data;
+    appendConditionRow({
+      temperature: params.t,
+      humidity: params.h,
     });
-    output.setContent(e.parameter.callback + "&&" + e.parameter.callback + "(" + JSON.stringify(result) + ");");
+    output.setContent("OK");
+    return output;
   }
+
+  output.setMimeType(ContentService.MimeType.JAVASCRIPT);
+  const values = sheets.conditions.getDataRange().getValues();
+  const result = serializeConditions(values);
+  output.setContent(buildJsonpResponse(params.callback, result));
   return output;
 }
 
 function turnOnAC() {
-  const temperature = 1.0 * conditions.getRange(conditionsLastRow, 2).getValue();
+  const temperature = Number(
+    sheets.conditions.getRange(getConditionsLastRow(), 2).getValue()
+  );
+  const settings = getSettings();
+  const statusValue = getStatus();
 
-  const values = setting.getDataRange().getValues();
-  const headers = values.shift();
-  const settings = values.map((row) => {
-    let data = {};
-    row.map((column, index) => {
-      data[headers[index]] = column;
-    });
-    return data;
-  }).shift();
-  const stat = status.getRange(1, 1).getValue();
-  if (temperature <= settings["hot_buttom"] && "off" == stat) {
-    UrlFetchApp.fetch(`http://a.ze.gs/switchbot-ac/-d/02-202307290753-22894539/-a/${settings["hot"]},5,1,on`);
-    UrlFetchApp.fetch(`http://a.ze.gs/switchbot-custom/-d/03-202401251013-58699638/-c/Hot/-d/03-202401251013-58699638/-c/Hot`);
-    status.getRange(1, 1).setValue("hot");
-  } else if (temperature >= settings["hot_up"] && "hot" == stat) {
-    UrlFetchApp.fetch(`http://a.ze.gs/switchbot-ac/-d/02-202307290753-22894539/-a/25,5,1,off`);
-    UrlFetchApp.fetch(`http://a.ze.gs/switchbot-custom/-d/03-202401251013-58699638/-c/Off`);
-    status.getRange(1, 1).setValue("off");
-  } else if (temperature <= settings["cool_buttom"] && "cool" == stat) {
-    UrlFetchApp.fetch(`http://a.ze.gs/switchbot-ac/-d/02-202307290753-22894539/-a/25,2,1,off`);
-    UrlFetchApp.fetch(`http://a.ze.gs/switchbot-custom/-d/03-202401251013-58699638/-c/Off`);
-    status.getRange(1, 1).setValue("off");
-  } else if (temperature >= settings["cool_up"] && "off" == stat) {
-    UrlFetchApp.fetch(`http://a.ze.gs/switchbot-ac/-d/02-202307290753-22894539/-a/${settings["cool"]},2,1,on`);
-    UrlFetchApp.fetch(`http://a.ze.gs/switchbot-custom/-d/03-202401251013-58699638/-c/Cool`);
-    status.getRange(1, 1).setValue("cool");
+  const action = AC_ACTIONS.find((candidate) =>
+    candidate.shouldRun({ temperature, statusValue, settings })
+  );
+
+  if (action) {
+    UrlFetchApp.fetch(buildAcUrl(action.acCommand({ settings })));
+    UrlFetchApp.fetch(
+      buildCustomUrl(action.customCommand, action.customRepeat ?? 1)
+    );
+    setStatus(action.nextStatus);
   }
+
   Logger.log(settings);
   Logger.log(temperature);
 }

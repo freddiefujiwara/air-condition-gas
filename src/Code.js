@@ -12,6 +12,17 @@ const SWITCHBOT = {
   customDevicePath: "-d/03-202401251013-58699638",
 };
 
+const CONDITIONS_COLUMNS = {
+  date: 1,
+  temperature: 2,
+  humidity: 3,
+};
+
+const STATUS_CELL = {
+  row: 1,
+  column: 1,
+};
+
 const getSheets = () => {
   const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
   return {
@@ -27,24 +38,33 @@ const buildAcUrl = (command) =>
 const buildCustomUrl = (command) =>
   `${SWITCHBOT.customBaseUrl}/${SWITCHBOT.customDevicePath}/-c/${command}`;
 
-const getConditionsLastRow = () => getSheets().conditions.getLastRow();
+const getConditionsLastRow = (sheets = getSheets()) =>
+  sheets.conditions.getLastRow();
 
-const appendConditionRow = ({ temperature, humidity }) => {
-  const rowIndex = getConditionsLastRow() + 1;
-  const sheets = getSheets();
-  sheets.conditions.getRange(rowIndex, 1).setValue(new Date());
-  sheets.conditions.getRange(rowIndex, 2).setValue(temperature ?? 0);
-  sheets.conditions.getRange(rowIndex, 3).setValue(humidity ?? 0);
+const appendConditionRow = ({ temperature, humidity }, sheets = getSheets()) => {
+  const rowIndex = getConditionsLastRow(sheets) + 1;
+  sheets.conditions
+    .getRange(rowIndex, CONDITIONS_COLUMNS.date)
+    .setValue(new Date());
+  sheets.conditions
+    .getRange(rowIndex, CONDITIONS_COLUMNS.temperature)
+    .setValue(temperature ?? 0);
+  sheets.conditions
+    .getRange(rowIndex, CONDITIONS_COLUMNS.humidity)
+    .setValue(humidity ?? 0);
 };
 
-const setStatus = (nextStatus) => {
-  getSheets().status.getRange(1, 1).setValue(nextStatus);
+const setStatus = (nextStatus, sheets = getSheets()) => {
+  sheets.status
+    .getRange(STATUS_CELL.row, STATUS_CELL.column)
+    .setValue(nextStatus);
 };
 
-const getStatus = () => getSheets().status.getRange(1, 1).getValue();
+const getStatus = (sheets = getSheets()) =>
+  sheets.status.getRange(STATUS_CELL.row, STATUS_CELL.column).getValue();
 
-const getSettings = () => {
-  const values = getSheets().setting.getDataRange().getValues();
+const getSettings = (sheets = getSheets()) => {
+  const values = sheets.setting.getDataRange().getValues();
   const headers = values.shift() ?? [];
   const row = values.shift() ?? [];
 
@@ -76,6 +96,33 @@ const serializeConditions = (headers, rows) =>
 
 const buildJsonpResponse = (callback, data) =>
   `${callback}&&${callback}(${JSON.stringify(data)});`;
+
+const getRowValues = (sheet, row, lastColumn) =>
+  sheet.getRange(row, 1, 1, lastColumn).getValues()[0];
+
+const buildConditionsPayload = (sheets) => {
+  const lastRow = getConditionsLastRow(sheets);
+  const conditionsSheet = sheets.conditions;
+  const lastColumn = conditionsSheet.getLastColumn();
+  const headers = getRowValues(conditionsSheet, 1, lastColumn);
+  const rowValues = getRowValues(conditionsSheet, lastRow, lastColumn);
+
+  return {
+    conditions: serializeConditions(headers, [rowValues]),
+    status: getStatus(sheets),
+    setting: getSettings(sheets),
+  };
+};
+
+const getLatestTemperature = (sheets) =>
+  Number(
+    sheets.conditions
+      .getRange(
+        getConditionsLastRow(sheets),
+        CONDITIONS_COLUMNS.temperature
+      )
+      .getValue()
+  );
 
 const AC_ACTIONS = [
   {
@@ -115,45 +162,33 @@ const AC_ACTIONS = [
 export function doGet(e) {
   const output = ContentService.createTextOutput();
   const params = e?.parameter ?? {};
+  const sheets = getSheets();
 
   if (params.callback === undefined) {
     output.setMimeType(ContentService.MimeType.TEXT);
     if (params.s === "status") {
-      setStatus(params.t);
+      setStatus(params.t, sheets);
     } else {
       appendConditionRow({
         temperature: params.t,
         humidity: params.h,
-      });
+      }, sheets);
     }
     output.setContent("OK");
     return output;
   }
 
   output.setMimeType(ContentService.MimeType.JAVASCRIPT);
-  const lastRow = getConditionsLastRow();
-  const sheets = getSheets();
-  const lastColumn = sheets.conditions.getLastColumn();
-  const getRowValues = (row) =>
-    sheets.conditions.getRange(row, 1, 1, lastColumn).getValues()[0];
-  const headers = getRowValues(1);
-  const rowValues = getRowValues(lastRow);
-  const payload = {
-    conditions: serializeConditions(headers, [rowValues]),
-    status: getStatus(),
-    setting: getSettings(),
-  };
+  const payload = buildConditionsPayload(sheets);
   output.setContent(buildJsonpResponse(params.callback, payload));
   return output;
 }
 
 export function turnOnAC() {
   const sheets = getSheets();
-  const temperature = Number(
-    sheets.conditions.getRange(getConditionsLastRow(), 2).getValue()
-  );
-  const settings = getSettings();
-  const statusValue = getStatus();
+  const temperature = getLatestTemperature(sheets);
+  const settings = getSettings(sheets);
+  const statusValue = getStatus(sheets);
 
   const action = AC_ACTIONS.find((candidate) =>
     candidate.shouldRun({ temperature, statusValue, settings })
@@ -162,7 +197,7 @@ export function turnOnAC() {
   if (action) {
     UrlFetchApp.fetch(buildAcUrl(action.acCommand({ settings })));
     UrlFetchApp.fetch(buildCustomUrl(action.customCommand));
-    setStatus(action.nextStatus);
+    setStatus(action.nextStatus, sheets);
   }
 
   Logger.log(settings);

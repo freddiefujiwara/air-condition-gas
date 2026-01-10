@@ -127,6 +127,7 @@ const loadCode = ({
     output,
     outputState,
     conditionsSheet,
+    conditionsRanges,
     statusRange,
     settingSheet,
     UrlFetchApp,
@@ -188,11 +189,32 @@ describe("doGet", () => {
     expect(result).not.toBeUndefined();
   });
 
+  it("defaults missing condition values when appending", () => {
+    const { context, conditionsRanges } = loadCode({
+      conditionsLastRow: 1,
+    });
+
+    context.doGet({
+      parameter: {},
+    });
+
+    const dateRange = conditionsRanges.get("2:1:1:1");
+    const temperatureRange = conditionsRanges.get("2:2:1:1");
+    const humidityRange = conditionsRanges.get("2:3:1:1");
+
+    expect(dateRange.setValue).toHaveBeenCalledWith(expect.anything());
+    expect(temperatureRange.setValue).toHaveBeenCalledWith(0);
+    expect(humidityRange.setValue).toHaveBeenCalledWith(0);
+  });
+
   it("returns JSONP when callback is provided", () => {
-    const { context, conditionsSheet, outputState, statusRange } = loadCode({
-      conditionsLastRow: 4,
-      conditionsHeaders: ["Date", "Temperature", "Humid"],
-      conditionsRowValues: [new Date(0), 24.5, 38],
+    const settings = buildSettings({ hot_buttom: 19 });
+    const { context, conditionsSheet, outputState, statusRange, settingSheet } =
+      loadCode({
+        conditionsLastRow: 4,
+        conditionsHeaders: ["Date", "Temperature", "Humid"],
+        conditionsRowValues: [new Date(0), 24.5, 38],
+        settingsValues: settingsValuesFrom(settings),
     });
 
     context.doGet({
@@ -206,6 +228,7 @@ describe("doGet", () => {
         { Date: "1/1/1970 9:00:00 AM", Temperature: 24.5, Humid: 38 },
       ],
       status: "off",
+      setting: settings,
     };
     const expectedContent = `cb&&cb(${JSON.stringify(expected)});`;
 
@@ -215,7 +238,35 @@ describe("doGet", () => {
     expect(conditionsSheet.getRange).toHaveBeenCalledWith(1, 1, 1, 3);
     expect(conditionsSheet.getRange).toHaveBeenCalledWith(4, 1, 1, 3);
     expect(conditionsSheet.getDataRange).not.toHaveBeenCalled();
+    expect(settingSheet.getDataRange).toHaveBeenCalled();
     expect(statusRange.getValue).toHaveBeenCalled();
+  });
+});
+
+describe("settings payload", () => {
+  it("returns empty settings when none exist", () => {
+    const { context, outputState, settingSheet } = loadCode({
+      conditionsHeaders: ["Date", "Temperature", "Humid"],
+      conditionsRowValues: [new Date(0), 24.5, 38],
+      conditionsLastRow: 2,
+    });
+
+    context.doGet({
+      parameter: {
+        callback: "cb",
+      },
+    });
+
+    const expected = {
+      conditions: [
+        { Date: "1/1/1970 9:00:00 AM", Temperature: 24.5, Humid: 38 },
+      ],
+      status: "off",
+      setting: {},
+    };
+
+    expect(outputState.content).toBe(`cb&&cb(${JSON.stringify(expected)});`);
+    expect(settingSheet.getDataRange).toHaveBeenCalled();
   });
 });
 

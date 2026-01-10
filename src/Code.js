@@ -138,6 +138,7 @@ function doGet(e) {
   const payload = {
     conditions: serializeConditions(headers, [rowValues]),
     status: getStatus(),
+    setting: getSettings(),
   };
   output.setContent(buildJsonpResponse(params.callback, payload));
   return output;

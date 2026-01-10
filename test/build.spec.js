@@ -32,7 +32,11 @@ describe("build", () => {
     );
     expect(fsModule.writeFileSync).toHaveBeenCalledWith(
       path.join(rootDir, "dist", "Code.gs"),
-      ["function doGet() {}", "const value = 1;", ""].join("\n")
+      [
+        "function doGet() {}",
+        "const value = 1;",
+        "doGet as handler;",
+      ].join("\n")
     );
     expect(fsModule.copyFileSync).toHaveBeenCalledWith(
       path.join(rootDir, "appsscript.json"),

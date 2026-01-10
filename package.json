@@ -1,0 +1,11 @@
+{
+  "scripts": {
+    "test": "vitest run",
+    "build": "node build.js",
+    "deploy": "clasp push --force"
+  },
+  "devDependencies": {
+    "vitest": "^1.0.0",
+    "@google/clasp": "^2.4.2"
+  }
+}

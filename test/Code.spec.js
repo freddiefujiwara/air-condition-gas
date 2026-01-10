@@ -57,6 +57,9 @@ const loadCode = ({
   };
   const statusSheet = {
     getRange: vi.fn(() => statusRange),
+    getDataRange: vi.fn(() => ({
+      getValues: vi.fn(() => [[statusValue]]),
+    })),
   };
 
   const settingSheet = {
@@ -194,7 +197,10 @@ describe("doGet", () => {
       }));
       return `${localized.toLocaleDateString()} ${localized.toLocaleTimeString()}`;
     })();
-    const expected = { conditions: [{ Date: formatted, Temp: 25 }] };
+    const expected = {
+      conditions: [{ Date: formatted, Temp: 25 }],
+      status: [["off"]],
+    };
     const expectedContent = `cb&&cb(${JSON.stringify(expected)});`;
 
     expect(outputState.content).toBe(expectedContent);

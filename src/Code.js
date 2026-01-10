@@ -138,7 +138,8 @@ function doGet(e) {
   output.setMimeType(ContentService.MimeType.JAVASCRIPT);
   const values = sheets.conditions.getDataRange().getValues();
   const result = serializeConditions(values);
-  const payload = { conditions: result };
+  const statusValues = sheets.status.getDataRange().getValues();
+  const payload = { conditions: result, status: statusValues };
   output.setContent(buildJsonpResponse(params.callback, payload));
   return output;
 }

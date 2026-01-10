@@ -150,7 +150,7 @@ describe("doGet", () => {
 
     expect(statusRange.setValue).toHaveBeenCalledWith("hot");
     expect(outputState.content).toBe("OK");
-    expect(result).toBeUndefined();
+    expect(result).toBe(output);
   });
 
   it("appends condition data when no callback is set", () => {

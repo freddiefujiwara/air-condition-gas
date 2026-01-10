@@ -131,7 +131,10 @@ function doGet(e) {
   }
 
   output.setMimeType(ContentService.MimeType.JAVASCRIPT);
-  const values = sheets.conditions.getDataRange().getValues();
+  const headers = sheets.conditions
+    .getRange(1, 1, 1, sheets.conditions.getLastColumn())
+    .getValues()[0];
+  const values = [headers, [getConditionsLastRow()]];
   const result = serializeConditions(values);
   const statusValues = sheets.status.getDataRange().getValues();
   const payload = { conditions: result, status: statusValues };

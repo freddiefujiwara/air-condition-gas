@@ -9,6 +9,7 @@ const loadCode = ({
   conditionsLastRow = 1,
   temperature = 0,
   conditionsValues = null,
+  conditionsHeaders = ["Row"],
   settingsValues = null,
   statusValue = "off",
 } = {}) => {
@@ -26,15 +27,18 @@ const loadCode = ({
 
   const conditionsRangeCalls = [];
   const conditionsRanges = new Map();
-  const makeRangeKey = (row, col) => `${row}:${col}`;
+  const makeRangeKey = (row, col, numRows = 1, numCols = 1) =>
+    `${row}:${col}:${numRows}:${numCols}`;
   const conditionsSheet = {
     getLastRow: vi.fn(() => conditionsLastRow),
-    getRange: vi.fn((row, col) => {
-      const key = makeRangeKey(row, col);
-      conditionsRangeCalls.push([row, col]);
+    getLastColumn: vi.fn(() => conditionsHeaders.length),
+    getRange: vi.fn((row, col, numRows = 1, numCols = 1) => {
+      const key = makeRangeKey(row, col, numRows, numCols);
+      conditionsRangeCalls.push([row, col, numRows, numCols]);
       if (!conditionsRanges.has(key)) {
         const range = {
           setValue: vi.fn(),
+          getValues: vi.fn(() => [conditionsHeaders]),
           getValue: vi.fn(() => {
             if (row === conditionsLastRow && col === 2) {
               return temperature;
@@ -168,21 +172,17 @@ describe("doGet", () => {
       },
     });
 
-    expect(conditionsSheet.getRange).toHaveBeenCalledWith(3, 1);
-    expect(conditionsSheet.getRange).toHaveBeenCalledWith(3, 2);
-    expect(conditionsSheet.getRange).toHaveBeenCalledWith(3, 3);
+    expect(conditionsSheet.getRange).toHaveBeenCalledWith(3, 1, 1, 1);
+    expect(conditionsSheet.getRange).toHaveBeenCalledWith(3, 2, 1, 1);
+    expect(conditionsSheet.getRange).toHaveBeenCalledWith(3, 3, 1, 1);
     expect(outputState.content).toBe("OK");
     expect(result).not.toBeUndefined();
   });
 
   it("returns JSONP when callback is provided", () => {
-    const dt = new Date("2024-01-01T00:00:00Z");
-    const conditionsValues = [
-      ["Date", "Temp"],
-      [dt, 25],
-    ];
-    const { context, outputState } = loadCode({
-      conditionsValues,
+    const { context, conditionsSheet, outputState } = loadCode({
+      conditionsLastRow: 4,
+      conditionsHeaders: ["Row"],
     });
 
     context.doGet({
@@ -191,19 +191,17 @@ describe("doGet", () => {
       },
     });
 
-    const formatted = (() => {
-      const localized = new Date(new Date(dt).toLocaleString("en-US", {
-        timeZone: "Asia/Tokyo",
-      }));
-      return `${localized.toLocaleDateString()} ${localized.toLocaleTimeString()}`;
-    })();
     const expected = {
-      conditions: [{ Date: formatted, Temp: 25 }],
+      conditions: [{ Row: 4 }],
       status: [["off"]],
     };
     const expectedContent = `cb&&cb(${JSON.stringify(expected)});`;
 
     expect(outputState.content).toBe(expectedContent);
+    expect(conditionsSheet.getLastRow).toHaveBeenCalled();
+    expect(conditionsSheet.getLastColumn).toHaveBeenCalled();
+    expect(conditionsSheet.getRange).toHaveBeenCalledWith(1, 1, 1, 1);
+    expect(conditionsSheet.getDataRange).not.toHaveBeenCalled();
   });
 });
 

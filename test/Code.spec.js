@@ -9,6 +9,8 @@ const loadCode = ({
   conditionsLastRow = 1,
   temperature = 0,
   conditionsValues = null,
+  conditionsHeaders = ["Row"],
+  conditionsRowValues = [1],
   settingsValues = null,
   statusValue = "off",
 } = {}) => {
@@ -26,15 +28,26 @@ const loadCode = ({
 
   const conditionsRangeCalls = [];
   const conditionsRanges = new Map();
-  const makeRangeKey = (row, col) => `${row}:${col}`;
+  const makeRangeKey = (row, col, numRows = 1, numCols = 1) =>
+    `${row}:${col}:${numRows}:${numCols}`;
   const conditionsSheet = {
     getLastRow: vi.fn(() => conditionsLastRow),
-    getRange: vi.fn((row, col) => {
-      const key = makeRangeKey(row, col);
-      conditionsRangeCalls.push([row, col]);
+    getLastColumn: vi.fn(() => conditionsHeaders.length),
+    getRange: vi.fn((row, col, numRows = 1, numCols = 1) => {
+      const key = makeRangeKey(row, col, numRows, numCols);
+      conditionsRangeCalls.push([row, col, numRows, numCols]);
       if (!conditionsRanges.has(key)) {
         const range = {
           setValue: vi.fn(),
+          getValues: vi.fn(() => {
+            if (row === 1) {
+              return [conditionsHeaders];
+            }
+            if (row === conditionsLastRow) {
+              return [conditionsRowValues];
+            }
+            return [[]];
+          }),
           getValue: vi.fn(() => {
             if (row === conditionsLastRow && col === 2) {
               return temperature;
@@ -176,13 +189,10 @@ describe("doGet", () => {
   });
 
   it("returns JSONP when callback is provided", () => {
-    const dt = new Date("2024-01-01T00:00:00Z");
-    const conditionsValues = [
-      ["Date", "Temp"],
-      [dt, 25],
-    ];
-    const { context, outputState } = loadCode({
-      conditionsValues,
+    const { context, conditionsSheet, outputState, statusRange } = loadCode({
+      conditionsLastRow: 4,
+      conditionsHeaders: ["Date", "Temperature", "Humid"],
+      conditionsRowValues: [new Date(0), 24.5, 38],
     });
 
     context.doGet({
@@ -191,19 +201,21 @@ describe("doGet", () => {
       },
     });
 
-    const formatted = (() => {
-      const localized = new Date(new Date(dt).toLocaleString("en-US", {
-        timeZone: "Asia/Tokyo",
-      }));
-      return `${localized.toLocaleDateString()} ${localized.toLocaleTimeString()}`;
-    })();
     const expected = {
-      conditions: [{ Date: formatted, Temp: 25 }],
-      status: [["off"]],
+      conditions: [
+        { Date: "1/1/1970 9:00:00 AM", Temperature: 24.5, Humid: 38 },
+      ],
+      status: "off",
     };
     const expectedContent = `cb&&cb(${JSON.stringify(expected)});`;
 
     expect(outputState.content).toBe(expectedContent);
+    expect(conditionsSheet.getLastRow).toHaveBeenCalled();
+    expect(conditionsSheet.getLastColumn).toHaveBeenCalled();
+    expect(conditionsSheet.getRange).toHaveBeenCalledWith(1, 1, 1, 3);
+    expect(conditionsSheet.getRange).toHaveBeenCalledWith(4, 1, 1, 3);
+    expect(conditionsSheet.getDataRange).not.toHaveBeenCalled();
+    expect(statusRange.getValue).toHaveBeenCalled();
   });
 });
 

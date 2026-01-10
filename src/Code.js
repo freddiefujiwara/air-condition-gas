@@ -58,9 +58,8 @@ const formatJapanTime = (value) => {
   return `${dt.toLocaleDateString()} ${dt.toLocaleTimeString()}`;
 };
 
-const serializeConditions = (values) => {
-  const headers = values.shift() ?? [];
-  return values.map((row) =>
+const serializeConditions = (headers, rows) =>
+  rows.map((row) =>
     row.reduce((acc, column, index) => {
       const header = headers[index];
       if (header === "Date") {
@@ -71,7 +70,6 @@ const serializeConditions = (values) => {
       return acc;
     }, {})
   );
-};
 
 const buildJsonpResponse = (callback, data) =>
   `${callback}&&${callback}(${JSON.stringify(data)});`;
@@ -131,10 +129,16 @@ function doGet(e) {
   }
 
   output.setMimeType(ContentService.MimeType.JAVASCRIPT);
-  const values = sheets.conditions.getDataRange().getValues();
-  const result = serializeConditions(values);
-  const statusValues = sheets.status.getDataRange().getValues();
-  const payload = { conditions: result, status: statusValues };
+  const lastRow = getConditionsLastRow();
+  const lastColumn = sheets.conditions.getLastColumn();
+  const getRowValues = (row) =>
+    sheets.conditions.getRange(row, 1, 1, lastColumn).getValues()[0];
+  const headers = getRowValues(1);
+  const rowValues = getRowValues(lastRow);
+  const payload = {
+    conditions: serializeConditions(headers, [rowValues]),
+    status: getStatus(),
+  };
   output.setContent(buildJsonpResponse(params.callback, payload));
   return output;
 }

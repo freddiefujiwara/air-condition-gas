@@ -172,9 +172,9 @@ describe("doGet", () => {
       },
     });
 
-    expect(conditionsSheet.getRange).toHaveBeenCalledWith(3, 1, 1, 1);
-    expect(conditionsSheet.getRange).toHaveBeenCalledWith(3, 2, 1, 1);
-    expect(conditionsSheet.getRange).toHaveBeenCalledWith(3, 3, 1, 1);
+    expect(conditionsSheet.getRange).toHaveBeenCalledWith(3, 1);
+    expect(conditionsSheet.getRange).toHaveBeenCalledWith(3, 2);
+    expect(conditionsSheet.getRange).toHaveBeenCalledWith(3, 3);
     expect(outputState.content).toBe("OK");
     expect(result).not.toBeUndefined();
   });

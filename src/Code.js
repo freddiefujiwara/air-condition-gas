@@ -139,7 +139,7 @@ function doGet(e) {
     .getValues()[0];
   const values = [headers, rowValues];
   const result = serializeConditions(values);
-  const statusValues = sheets.status.getDataRange().getValues();
+  const statusValues = getStatus();
   const payload = { conditions: result, status: statusValues };
   output.setContent(buildJsonpResponse(params.callback, payload));
   return output;

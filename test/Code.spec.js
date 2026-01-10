@@ -205,7 +205,7 @@ describe("doGet", () => {
       conditions: [
         { Date: "1/1/1970 9:00:00 AM", Temperature: 24.5, Humid: 38 },
       ],
-      status: [["off"]],
+      status: "off",
     };
     const expectedContent = `cb&&cb(${JSON.stringify(expected)});`;
 
@@ -215,6 +215,7 @@ describe("doGet", () => {
     expect(conditionsSheet.getRange).toHaveBeenCalledWith(1, 1, 1, 3);
     expect(conditionsSheet.getRange).toHaveBeenCalledWith(4, 1, 1, 3);
     expect(conditionsSheet.getDataRange).not.toHaveBeenCalled();
+    expect(statusRange.getValue).toHaveBeenCalled();
   });
 });
 

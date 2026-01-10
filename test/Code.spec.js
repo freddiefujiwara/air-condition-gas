@@ -57,6 +57,9 @@ const loadCode = ({
   };
   const statusSheet = {
     getRange: vi.fn(() => statusRange),
+    getDataRange: vi.fn(() => ({
+      getValues: vi.fn(() => [[statusValue]]),
+    })),
   };
 
   const settingSheet = {
@@ -139,7 +142,7 @@ const settingsValuesFrom = (settings) => {
 
 describe("doGet", () => {
   it("writes status and exits when status param is provided", () => {
-    const { context, statusRange, outputState } = loadCode();
+    const { context, statusRange, outputState, output } = loadCode();
 
     const result = context.doGet({
       parameter: {
@@ -150,7 +153,7 @@ describe("doGet", () => {
 
     expect(statusRange.setValue).toHaveBeenCalledWith("hot");
     expect(outputState.content).toBe("OK");
-    expect(result).toBeUndefined();
+    expect(result).toBe(output);
   });
 
   it("appends condition data when no callback is set", () => {
@@ -194,7 +197,10 @@ describe("doGet", () => {
       }));
       return `${localized.toLocaleDateString()} ${localized.toLocaleTimeString()}`;
     })();
-    const expected = [{ Date: formatted, Temp: 25 }];
+    const expected = {
+      conditions: [{ Date: formatted, Temp: 25 }],
+      status: [["off"]],
+    };
     const expectedContent = `cb&&cb(${JSON.stringify(expected)});`;
 
     expect(outputState.content).toBe(expectedContent);

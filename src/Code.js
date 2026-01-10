@@ -125,7 +125,7 @@ function doGet(e) {
     if (params.s === "status") {
       setStatus(params.t);
       output.setContent("OK");
-      return;
+      return output;
     }
     appendConditionRow({
       temperature: params.t,
@@ -138,7 +138,9 @@ function doGet(e) {
   output.setMimeType(ContentService.MimeType.JAVASCRIPT);
   const values = sheets.conditions.getDataRange().getValues();
   const result = serializeConditions(values);
-  output.setContent(buildJsonpResponse(params.callback, result));
+  const statusValues = sheets.status.getDataRange().getValues();
+  const payload = { conditions: result, status: statusValues };
+  output.setContent(buildJsonpResponse(params.callback, payload));
   return output;
 }
 

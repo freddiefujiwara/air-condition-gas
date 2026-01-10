@@ -12,7 +12,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        node-version: ["18", "20", "22"]
+        include:
+          - node-version: "18"
+            deploy: false
+          - node-version: "20"
+            deploy: false
+          - node-version: "22"
+            deploy: true
     steps:
       - uses: actions/checkout@v4
 
@@ -27,23 +33,24 @@ jobs:
         run: npm test
 
       - name: Build
+        if: ${{ matrix.deploy }}
         run: npm run build
 
       - name: Install clasp
-        if: ${{ matrix.node-version == '22' }}
+        if: ${{ matrix.deploy }}
         run: npm i -g @google/clasp
 
       - name: Write clasp credentials
-        if: ${{ matrix.node-version == '22' }}
+        if: ${{ matrix.deploy }}
         run: |
           echo '${{ secrets.CLASPRC_JSON }}' > ~/.clasprc.json
 
       - name: Push dist to Apps Script
-        if: ${{ matrix.node-version == '22' }}
+        if: ${{ matrix.deploy }}
         run: clasp push --force
 
       - name: Create version
-        if: ${{ matrix.node-version == '22' }}
+        if: ${{ matrix.deploy }}
         id: version
         run: |
           OUT=$(clasp create-version "Auto deploy from Node CI")
@@ -51,7 +58,7 @@ jobs:
           echo "ver=$VER" >> $GITHUB_OUTPUT
 
       - name: Deploy
-        if: ${{ matrix.node-version == '22' }}
+        if: ${{ matrix.deploy }}
         run: |
           if [ -n "${{ secrets.DEPLOYMENT_ID }}" ]; then
             clasp update-deployment \

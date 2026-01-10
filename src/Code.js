@@ -80,6 +80,12 @@ const serializeConditions = (values) => {
 const buildJsonpResponse = (callback, data) =>
   `${callback}&&${callback}(${JSON.stringify(data)});`;
 
+const applyCorsHeaders = (output) =>
+  output
+    .setHeader("Access-Control-Allow-Origin", "*")
+    .setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS")
+    .setHeader("Access-Control-Allow-Headers", "Content-Type");
+
 const AC_ACTIONS = [
   {
     name: "hot_on",
@@ -125,21 +131,21 @@ function doGet(e) {
     if (params.s === "status") {
       setStatus(params.t);
       output.setContent("OK");
-      return;
+      return applyCorsHeaders(output);
     }
     appendConditionRow({
       temperature: params.t,
       humidity: params.h,
     });
     output.setContent("OK");
-    return output;
+    return applyCorsHeaders(output);
   }
 
   output.setMimeType(ContentService.MimeType.JAVASCRIPT);
   const values = sheets.conditions.getDataRange().getValues();
   const result = serializeConditions(values);
   output.setContent(buildJsonpResponse(params.callback, result));
-  return output;
+  return applyCorsHeaders(output);
 }
 
 function turnOnAC() {

@@ -222,7 +222,7 @@ describe("turnOnAC", () => {
       "http://a.ze.gs/switchbot-ac/-d/02-202307290753-22894539/-a/23,5,1,on"
     );
     expect(UrlFetchApp.fetch).toHaveBeenCalledWith(
-      "http://a.ze.gs/switchbot-custom/-d/03-202401251013-58699638/-c/Hot/-d/03-202401251013-58699638/-c/Hot"
+      "http://a.ze.gs/switchbot-custom/-d/03-202401251013-58699638/-c/Hot"
     );
     expect(statusRange.setValue).toHaveBeenCalledWith("hot");
     expect(Logger.log).toHaveBeenCalledWith(settings);

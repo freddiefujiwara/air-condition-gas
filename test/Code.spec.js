@@ -139,7 +139,7 @@ const settingsValuesFrom = (settings) => {
 
 describe("doGet", () => {
   it("writes status and exits when status param is provided", () => {
-    const { context, statusRange, outputState } = loadCode();
+    const { context, statusRange, outputState, output } = loadCode();
 
     const result = context.doGet({
       parameter: {

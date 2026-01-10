@@ -158,6 +158,14 @@ const settingsValuesFrom = (settings) => {
 };
 
 describe("doGet", () => {
+  it("handles missing event payload", async () => {
+    const { module, outputState } = await loadCode();
+
+    module.doGet();
+
+    expect(outputState.content).toBe("OK");
+  });
+
   it("writes status and exits when status param is provided", async () => {
     const { module, statusRange, outputState, output } = await loadCode();
 

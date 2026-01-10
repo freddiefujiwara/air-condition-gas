@@ -182,7 +182,7 @@ describe("doGet", () => {
   });
 
   it("appends condition data when no callback is set", async () => {
-    const { module, conditionsSheet, outputState } = await loadCode({
+    const { module, conditionsSheet, outputState, output } = await loadCode({
       conditionsLastRow: 2,
     });
 
@@ -197,7 +197,7 @@ describe("doGet", () => {
     expect(conditionsSheet.getRange).toHaveBeenCalledWith(3, 2);
     expect(conditionsSheet.getRange).toHaveBeenCalledWith(3, 3);
     expect(outputState.content).toBe("OK");
-    expect(result).not.toBeUndefined();
+    expect(result).toBe(output);
   });
 
   it("defaults missing condition values when appending", async () => {

@@ -189,7 +189,7 @@ describe("doGet", () => {
   });
 
   it("returns JSONP when callback is provided", () => {
-    const { context, conditionsSheet, outputState } = loadCode({
+    const { context, conditionsSheet, outputState, statusRange } = loadCode({
       conditionsLastRow: 4,
       conditionsHeaders: ["Date", "Temperature", "Humid"],
       conditionsRowValues: [new Date(0), 24.5, 38],

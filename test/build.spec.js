@@ -1,7 +1,7 @@
 import path from "path";
 import { describe, expect, it, vi } from "vitest";
 
-import { build } from "../build";
+import { build, runIfMain } from "../build";
 
 describe("build", () => {
   it("writes Code.gs without export statements and copies manifest", () => {
@@ -42,5 +42,16 @@ describe("build", () => {
       path.join(rootDir, "appsscript.json"),
       path.join(rootDir, "dist", "appsscript.json")
     );
+  });
+
+  it("runs build when main matches current module", () => {
+    const buildFn = vi.fn();
+    const main = {};
+    const current = main;
+
+    const result = runIfMain({ main, current, buildFn });
+
+    expect(buildFn).toHaveBeenCalled();
+    expect(result).toBe(true);
   });
 });

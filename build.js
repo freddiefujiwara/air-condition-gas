@@ -21,8 +21,14 @@ const build = ({
   fsModule.copyFileSync(appsscriptPath, distManifestPath);
 };
 
-module.exports = { build };
+const runIfMain = ({ main = require.main, current = module, buildFn = build } = {}) => {
+  if (main === current) {
+    buildFn();
+    return true;
+  }
+  return false;
+};
 
-if (require.main === module) {
-  build();
-}
+runIfMain();
+
+module.exports = { build, runIfMain };

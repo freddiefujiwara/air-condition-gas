@@ -29,37 +29,21 @@ jobs:
       - name: Build
         run: npm run build
 
-  deploy:
-    needs: test
-    if: ${{ github.ref == 'refs/heads/main' && !cancelled() && !failure() }}
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-
-      - name: Install deps
-        run: npm install
-
-      - name: Run tests
-        run: npm test
-
-      - name: Build
-        run: npm run build
-
       - name: Install clasp
+        if: ${{ matrix.node-version == '22' }}
         run: npm i -g @google/clasp
 
       - name: Write clasp credentials
+        if: ${{ matrix.node-version == '22' }}
         run: |
           echo '${{ secrets.CLASPRC_JSON }}' > ~/.clasprc.json
 
       - name: Push dist to Apps Script
+        if: ${{ matrix.node-version == '22' }}
         run: clasp push --force
 
       - name: Create version
+        if: ${{ matrix.node-version == '22' }}
         id: version
         run: |
           OUT=$(clasp create-version "Auto deploy from Node CI")
@@ -67,6 +51,7 @@ jobs:
           echo "ver=$VER" >> $GITHUB_OUTPUT
 
       - name: Deploy
+        if: ${{ matrix.node-version == '22' }}
         run: |
           if [ -n "${{ secrets.DEPLOYMENT_ID }}" ]; then
             clasp update-deployment \

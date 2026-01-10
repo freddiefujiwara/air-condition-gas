@@ -12,13 +12,17 @@ const loadCode = ({
   settingsValues = null,
   statusValue = "off",
 } = {}) => {
-  const outputState = { content: "", mimeType: "" };
+  const outputState = { content: "", mimeType: "", headers: {} };
   const output = {
     setMimeType: vi.fn((mime) => {
       outputState.mimeType = mime;
     }),
     setContent: vi.fn((content) => {
       outputState.content = content;
+    }),
+    setHeader: vi.fn((key, value) => {
+      outputState.headers[key] = value;
+      return output;
     }),
     getContent: () => outputState.content,
     getMimeType: () => outputState.mimeType,
@@ -150,7 +154,12 @@ describe("doGet", () => {
 
     expect(statusRange.setValue).toHaveBeenCalledWith("hot");
     expect(outputState.content).toBe("OK");
-    expect(result).toBeUndefined();
+    expect(outputState.headers).toEqual({
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type",
+    });
+    expect(result).toBeDefined();
   });
 
   it("appends condition data when no callback is set", () => {
@@ -169,6 +178,11 @@ describe("doGet", () => {
     expect(conditionsSheet.getRange).toHaveBeenCalledWith(3, 2);
     expect(conditionsSheet.getRange).toHaveBeenCalledWith(3, 3);
     expect(outputState.content).toBe("OK");
+    expect(outputState.headers).toEqual({
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type",
+    });
     expect(result).not.toBeUndefined();
   });
 
@@ -198,6 +212,11 @@ describe("doGet", () => {
     const expectedContent = `cb&&cb(${JSON.stringify(expected)});`;
 
     expect(outputState.content).toBe(expectedContent);
+    expect(outputState.headers).toEqual({
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type",
+    });
   });
 });
 

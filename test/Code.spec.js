@@ -10,6 +10,7 @@ const loadCode = ({
   temperature = 0,
   conditionsValues = null,
   conditionsHeaders = ["Row"],
+  conditionsRowValues = [1],
   settingsValues = null,
   statusValue = "off",
 } = {}) => {
@@ -38,7 +39,15 @@ const loadCode = ({
       if (!conditionsRanges.has(key)) {
         const range = {
           setValue: vi.fn(),
-          getValues: vi.fn(() => [conditionsHeaders]),
+          getValues: vi.fn(() => {
+            if (row === 1) {
+              return [conditionsHeaders];
+            }
+            if (row === conditionsLastRow) {
+              return [conditionsRowValues];
+            }
+            return [[]];
+          }),
           getValue: vi.fn(() => {
             if (row === conditionsLastRow && col === 2) {
               return temperature;
@@ -182,7 +191,8 @@ describe("doGet", () => {
   it("returns JSONP when callback is provided", () => {
     const { context, conditionsSheet, outputState } = loadCode({
       conditionsLastRow: 4,
-      conditionsHeaders: ["Row"],
+      conditionsHeaders: ["Date", "Temperature", "Humid"],
+      conditionsRowValues: [new Date(0), 24.5, 38],
     });
 
     context.doGet({
@@ -192,7 +202,9 @@ describe("doGet", () => {
     });
 
     const expected = {
-      conditions: [{ Row: 4 }],
+      conditions: [
+        { Date: "1/1/1970 9:00:00 AM", Temperature: 24.5, Humid: 38 },
+      ],
       status: [["off"]],
     };
     const expectedContent = `cb&&cb(${JSON.stringify(expected)});`;
@@ -200,7 +212,8 @@ describe("doGet", () => {
     expect(outputState.content).toBe(expectedContent);
     expect(conditionsSheet.getLastRow).toHaveBeenCalled();
     expect(conditionsSheet.getLastColumn).toHaveBeenCalled();
-    expect(conditionsSheet.getRange).toHaveBeenCalledWith(1, 1, 1, 1);
+    expect(conditionsSheet.getRange).toHaveBeenCalledWith(1, 1, 1, 3);
+    expect(conditionsSheet.getRange).toHaveBeenCalledWith(4, 1, 1, 3);
     expect(conditionsSheet.getDataRange).not.toHaveBeenCalled();
   });
 });

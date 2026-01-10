@@ -175,7 +175,7 @@ describe("doGet", () => {
   it("returns JSONP when callback is provided", () => {
     const dt = new Date("2024-01-01T00:00:00Z");
     const conditionsValues = [
-      ["Datetime", "Temp"],
+      ["Date", "Temp"],
       [dt, 25],
     ];
     const { context, outputState } = loadCode({
@@ -194,7 +194,7 @@ describe("doGet", () => {
       }));
       return `${localized.toLocaleDateString()} ${localized.toLocaleTimeString()}`;
     })();
-    const expected = [{ Datetime: formatted, Temp: 25 }];
+    const expected = [{ Date: formatted, Temp: 25 }];
     const expectedContent = `cb&&cb(${JSON.stringify(expected)});`;
 
     expect(outputState.content).toBe(expectedContent);

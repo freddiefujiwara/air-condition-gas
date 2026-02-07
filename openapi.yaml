@@ -1,0 +1,58 @@
+openapi: 3.0.3
+info:
+  title: Air Condition Logger API
+  version: 1.0.0
+  description: |
+    Google Apps Script endpoint for logging room conditions, updating status, and
+    returning JSONP payloads for the latest readings.
+servers:
+  - url: https://script.google.com/macros/s/AKfycbz61Wl_rfwYOuZ0z2z9qeegnIsanQeu6oI3Q3K5gX66Hgroaoz2z466ck9xMSvBfHpwUQ
+paths:
+  /exec:
+    get:
+      summary: Log conditions, update status, or return JSONP data.
+      description: |
+        The endpoint behavior depends on the provided query parameters:
+        - `callback` returns JSONP payload with the latest condition, status, and settings.
+        - `s=status` with `t=<status>` updates the stored status value.
+        - Otherwise, logs temperature and humidity values.
+      parameters:
+        - in: query
+          name: t
+          schema:
+            type: number
+          description: Temperature value to log, or status value when used with `s=status`.
+        - in: query
+          name: h
+          schema:
+            type: number
+          description: Humidity value to log.
+        - in: query
+          name: s
+          schema:
+            type: string
+            enum: [status]
+          description: When set to `status`, updates the stored status value using `t`.
+        - in: query
+          name: callback
+          schema:
+            type: string
+          description: JSONP callback name to return the latest payload.
+      responses:
+        "200":
+          description: Successful response.
+          content:
+            text/plain:
+              schema:
+                type: string
+              examples:
+                ok:
+                  summary: Logged or updated status.
+                  value: OK
+            application/javascript:
+              schema:
+                type: string
+              examples:
+                jsonp:
+                  summary: JSONP payload with latest condition data.
+                  value: callback&&callback({"conditions":[],"status":"off","setting":{}});

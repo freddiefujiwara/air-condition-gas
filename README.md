@@ -36,6 +36,10 @@ GET /exec?s=status&t=<status>
 GET /exec?callback=<callback>
 ```
 
+## OpenAPI
+
+See `openapi.yaml` in the repository root for the OpenAPI 3.0 definition of the `/exec` endpoint.
+
 ## Scripts
 
 - `npm test` runs the Vitest suite.
@@ -47,4 +51,3 @@ GET /exec?callback=<callback>
 1. Update `SPREADSHEET_ID` in `src/Code.js` to match your spreadsheet.
 2. Install dependencies with `npm install`.
 3. Run tests with `npm test`.
-

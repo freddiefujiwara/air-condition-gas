@@ -51,3 +51,13 @@ See `openapi.yaml` in the repository root for the OpenAPI 3.0 definition of the 
 1. Update `SPREADSHEET_ID` in `src/Code.js` to match your spreadsheet.
 2. Install dependencies with `npm install`.
 3. Run tests with `npm test`.
+
+## Script properties
+
+The home command API prefixes live in the Apps Script project's
+script properties, not in this repository:
+
+- `SWITCHBOT_AC_URL`: prefix for the air conditioner commands
+  (base URL + device path).
+- `SWITCHBOT_CUSTOM_URL`: prefix for the custom remote commands
+  (base URL + device path).

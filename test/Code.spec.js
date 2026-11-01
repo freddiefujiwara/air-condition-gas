@@ -106,17 +106,32 @@ const loadCode = async ({
     log: vi.fn(),
   };
 
+  const PropertiesService = {
+    getScriptProperties: vi.fn(() => ({
+      getProperty: vi.fn(
+        (name) =>
+          ({
+            SWITCHBOT_AC_URL: "http://home-api.example/switchbot-ac/-d/AC-DEVICE",
+            SWITCHBOT_CUSTOM_URL:
+              "http://home-api.example/switchbot-custom/-d/CUSTOM-DEVICE",
+          })[name] || null
+      ),
+    })),
+  };
+
   const sandbox = {
     SpreadsheetApp,
     ContentService,
     UrlFetchApp,
     Logger,
+    PropertiesService,
   };
 
   vi.stubGlobal("SpreadsheetApp", sandbox.SpreadsheetApp);
   vi.stubGlobal("ContentService", sandbox.ContentService);
   vi.stubGlobal("UrlFetchApp", sandbox.UrlFetchApp);
   vi.stubGlobal("Logger", sandbox.Logger);
+  vi.stubGlobal("PropertiesService", sandbox.PropertiesService);
   await vi.resetModules();
   const module = await import("../src/Code.js");
 
@@ -293,10 +308,10 @@ describe("turnOnAC", () => {
     module.turnOnAC();
 
     expect(UrlFetchApp.fetch).toHaveBeenCalledWith(
-      "http://a.ze.gs/switchbot-ac/-d/02-202307290753-22894539/-a/23,5,1,on"
+      "http://home-api.example/switchbot-ac/-d/AC-DEVICE/-a/23,5,1,on"
     );
     expect(UrlFetchApp.fetch).toHaveBeenCalledWith(
-      "http://a.ze.gs/switchbot-custom/-d/03-202401251013-58699638/-c/Hot"
+      "http://home-api.example/switchbot-custom/-d/CUSTOM-DEVICE/-c/Hot"
     );
     expect(statusRange.setValue).toHaveBeenCalledWith("hot");
     expect(Logger.log).toHaveBeenCalledWith(settings);
@@ -314,10 +329,10 @@ describe("turnOnAC", () => {
     module.turnOnAC();
 
     expect(UrlFetchApp.fetch).toHaveBeenCalledWith(
-      "http://a.ze.gs/switchbot-ac/-d/02-202307290753-22894539/-a/25,5,1,off"
+      "http://home-api.example/switchbot-ac/-d/AC-DEVICE/-a/25,5,1,off"
     );
     expect(UrlFetchApp.fetch).toHaveBeenCalledWith(
-      "http://a.ze.gs/switchbot-custom/-d/03-202401251013-58699638/-c/Off"
+      "http://home-api.example/switchbot-custom/-d/CUSTOM-DEVICE/-c/Off"
     );
     expect(statusRange.setValue).toHaveBeenCalledWith("off");
     expect(Logger.log).toHaveBeenCalledWith(settings);
@@ -335,10 +350,10 @@ describe("turnOnAC", () => {
     module.turnOnAC();
 
     expect(UrlFetchApp.fetch).toHaveBeenCalledWith(
-      "http://a.ze.gs/switchbot-ac/-d/02-202307290753-22894539/-a/25,2,1,off"
+      "http://home-api.example/switchbot-ac/-d/AC-DEVICE/-a/25,2,1,off"
     );
     expect(UrlFetchApp.fetch).toHaveBeenCalledWith(
-      "http://a.ze.gs/switchbot-custom/-d/03-202401251013-58699638/-c/Off"
+      "http://home-api.example/switchbot-custom/-d/CUSTOM-DEVICE/-c/Off"
     );
     expect(statusRange.setValue).toHaveBeenCalledWith("off");
     expect(Logger.log).toHaveBeenCalledWith(settings);
@@ -356,10 +371,10 @@ describe("turnOnAC", () => {
     module.turnOnAC();
 
     expect(UrlFetchApp.fetch).toHaveBeenCalledWith(
-      "http://a.ze.gs/switchbot-ac/-d/02-202307290753-22894539/-a/25,2,1,on"
+      "http://home-api.example/switchbot-ac/-d/AC-DEVICE/-a/25,2,1,on"
     );
     expect(UrlFetchApp.fetch).toHaveBeenCalledWith(
-      "http://a.ze.gs/switchbot-custom/-d/03-202401251013-58699638/-c/Cool"
+      "http://home-api.example/switchbot-custom/-d/CUSTOM-DEVICE/-c/Cool"
     );
     expect(statusRange.setValue).toHaveBeenCalledWith("cool");
     expect(Logger.log).toHaveBeenCalledWith(settings);

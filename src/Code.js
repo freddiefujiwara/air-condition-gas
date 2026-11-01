@@ -5,11 +5,16 @@ const SHEET_NAMES = {
   setting: "setting",
 };
 
-const SWITCHBOT = {
-  acBaseUrl: "http://a.ze.gs/switchbot-ac",
-  acDevicePath: "-d/02-202307290753-22894539",
-  customBaseUrl: "http://a.ze.gs/switchbot-custom",
-  customDevicePath: "-d/03-202401251013-58699638",
+// Home server details (base URLs and device IDs) live in script
+// properties, not in this public source code:
+//   SWITCHBOT_AC_URL     e.g. <base>/switchbot-ac/-d/<device id>
+//   SWITCHBOT_CUSTOM_URL e.g. <base>/switchbot-custom/-d/<device id>
+const getProperty_ = (name) => {
+  const value = PropertiesService.getScriptProperties().getProperty(name);
+  if (!value) {
+    throw new Error(`script property ${name} is not set`);
+  }
+  return value;
 };
 
 const CONDITIONS_COLUMNS = {
@@ -33,10 +38,10 @@ const getSheets = () => {
 };
 
 const buildAcUrl = (command) =>
-  `${SWITCHBOT.acBaseUrl}/${SWITCHBOT.acDevicePath}/-a/${command}`;
+  `${getProperty_("SWITCHBOT_AC_URL")}/-a/${command}`;
 
 const buildCustomUrl = (command) =>
-  `${SWITCHBOT.customBaseUrl}/${SWITCHBOT.customDevicePath}/-c/${command}`;
+  `${getProperty_("SWITCHBOT_CUSTOM_URL")}/-c/${command}`;
 
 const getConditionsLastRow = (sheets = getSheets()) =>
   sheets.conditions.getLastRow();

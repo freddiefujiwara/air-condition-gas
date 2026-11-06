@@ -200,8 +200,11 @@ export function turnOnAC() {
   );
 
   if (action) {
-    UrlFetchApp.fetch(buildAcUrl(action.acCommand({ settings })));
-    UrlFetchApp.fetch(buildCustomUrl(action.customCommand));
+    const options = {
+      headers: { "X-Api-Token": getProperty_("HOME_API_TOKEN") },
+    };
+    UrlFetchApp.fetch(buildAcUrl(action.acCommand({ settings })), options);
+    UrlFetchApp.fetch(buildCustomUrl(action.customCommand), options);
     setStatus(action.nextStatus, sheets);
   }
 

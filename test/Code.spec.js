@@ -114,6 +114,7 @@ const loadCode = async ({
             SWITCHBOT_AC_URL: "http://home-api.example/switchbot-ac/-d/AC-DEVICE",
             SWITCHBOT_CUSTOM_URL:
               "http://home-api.example/switchbot-custom/-d/CUSTOM-DEVICE",
+            HOME_API_TOKEN: "dummy-home-api-token",
           })[name] || null
       ),
     })),
@@ -308,10 +309,12 @@ describe("turnOnAC", () => {
     module.turnOnAC();
 
     expect(UrlFetchApp.fetch).toHaveBeenCalledWith(
-      "http://home-api.example/switchbot-ac/-d/AC-DEVICE/-a/23,5,1,on"
+      "http://home-api.example/switchbot-ac/-d/AC-DEVICE/-a/23,5,1,on",
+      { headers: { "X-Api-Token": "dummy-home-api-token" } }
     );
     expect(UrlFetchApp.fetch).toHaveBeenCalledWith(
-      "http://home-api.example/switchbot-custom/-d/CUSTOM-DEVICE/-c/Hot"
+      "http://home-api.example/switchbot-custom/-d/CUSTOM-DEVICE/-c/Hot",
+      { headers: { "X-Api-Token": "dummy-home-api-token" } }
     );
     expect(statusRange.setValue).toHaveBeenCalledWith("hot");
     expect(Logger.log).toHaveBeenCalledWith(settings);
@@ -329,10 +332,12 @@ describe("turnOnAC", () => {
     module.turnOnAC();
 
     expect(UrlFetchApp.fetch).toHaveBeenCalledWith(
-      "http://home-api.example/switchbot-ac/-d/AC-DEVICE/-a/25,5,1,off"
+      "http://home-api.example/switchbot-ac/-d/AC-DEVICE/-a/25,5,1,off",
+      { headers: { "X-Api-Token": "dummy-home-api-token" } }
     );
     expect(UrlFetchApp.fetch).toHaveBeenCalledWith(
-      "http://home-api.example/switchbot-custom/-d/CUSTOM-DEVICE/-c/Off"
+      "http://home-api.example/switchbot-custom/-d/CUSTOM-DEVICE/-c/Off",
+      { headers: { "X-Api-Token": "dummy-home-api-token" } }
     );
     expect(statusRange.setValue).toHaveBeenCalledWith("off");
     expect(Logger.log).toHaveBeenCalledWith(settings);
@@ -350,10 +355,12 @@ describe("turnOnAC", () => {
     module.turnOnAC();
 
     expect(UrlFetchApp.fetch).toHaveBeenCalledWith(
-      "http://home-api.example/switchbot-ac/-d/AC-DEVICE/-a/25,2,1,off"
+      "http://home-api.example/switchbot-ac/-d/AC-DEVICE/-a/25,2,1,off",
+      { headers: { "X-Api-Token": "dummy-home-api-token" } }
     );
     expect(UrlFetchApp.fetch).toHaveBeenCalledWith(
-      "http://home-api.example/switchbot-custom/-d/CUSTOM-DEVICE/-c/Off"
+      "http://home-api.example/switchbot-custom/-d/CUSTOM-DEVICE/-c/Off",
+      { headers: { "X-Api-Token": "dummy-home-api-token" } }
     );
     expect(statusRange.setValue).toHaveBeenCalledWith("off");
     expect(Logger.log).toHaveBeenCalledWith(settings);
@@ -371,10 +378,12 @@ describe("turnOnAC", () => {
     module.turnOnAC();
 
     expect(UrlFetchApp.fetch).toHaveBeenCalledWith(
-      "http://home-api.example/switchbot-ac/-d/AC-DEVICE/-a/25,2,1,on"
+      "http://home-api.example/switchbot-ac/-d/AC-DEVICE/-a/25,2,1,on",
+      { headers: { "X-Api-Token": "dummy-home-api-token" } }
     );
     expect(UrlFetchApp.fetch).toHaveBeenCalledWith(
-      "http://home-api.example/switchbot-custom/-d/CUSTOM-DEVICE/-c/Cool"
+      "http://home-api.example/switchbot-custom/-d/CUSTOM-DEVICE/-c/Cool",
+      { headers: { "X-Api-Token": "dummy-home-api-token" } }
     );
     expect(statusRange.setValue).toHaveBeenCalledWith("cool");
     expect(Logger.log).toHaveBeenCalledWith(settings);

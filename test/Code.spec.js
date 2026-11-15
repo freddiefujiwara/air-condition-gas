@@ -94,6 +94,7 @@ const loadCode = async ({
     MimeType: {
       TEXT: "text/plain",
       JAVASCRIPT: "application/javascript",
+      JSON: "application/json",
     },
     createTextOutput: vi.fn(() => output),
   };
@@ -115,6 +116,7 @@ const loadCode = async ({
             SWITCHBOT_CUSTOM_URL:
               "http://home-api.example/switchbot-custom/-d/CUSTOM-DEVICE",
             HOME_API_TOKEN: "dummy-home-api-token",
+            WRITE_TOKEN: "dummy-write-token",
           })[name] || null
       ),
     })),
@@ -179,7 +181,30 @@ describe("doGet", () => {
 
     module.doGet();
 
-    expect(outputState.content).toBe("OK");
+    expect(outputState.content).toBe("NG");
+  });
+
+  it("rejects writes without a token and writes nothing", async () => {
+    const { module, conditionsSheet, statusRange, outputState } =
+      await loadCode({ conditionsLastRow: 2 });
+
+    module.doGet({ parameter: { t: 24, h: 60 } });
+    module.doGet({ parameter: { s: "status", t: "hot" } });
+
+    expect(outputState.content).toBe("NG");
+    expect(conditionsSheet.getRange).not.toHaveBeenCalled();
+    expect(statusRange.setValue).not.toHaveBeenCalled();
+  });
+
+  it("rejects writes with a wrong token", async () => {
+    const { module, conditionsSheet, outputState } = await loadCode({
+      conditionsLastRow: 2,
+    });
+
+    module.doGet({ parameter: { t: 24, h: 60, token: "wrong" } });
+
+    expect(outputState.content).toBe("NG");
+    expect(conditionsSheet.getRange).not.toHaveBeenCalled();
   });
 
   it("writes status and exits when status param is provided", async () => {
@@ -189,6 +214,7 @@ describe("doGet", () => {
       parameter: {
         s: "status",
         t: "hot",
+        token: "dummy-write-token",
       },
     });
 
@@ -206,6 +232,7 @@ describe("doGet", () => {
       parameter: {
         t: 24,
         h: 60,
+        token: "dummy-write-token",
       },
     });
 
@@ -222,7 +249,7 @@ describe("doGet", () => {
     });
 
     module.doGet({
-      parameter: {},
+      parameter: { token: "dummy-write-token" },
     });
 
     const dateRange = conditionsRanges.get("2:1:1:1");
@@ -267,6 +294,28 @@ describe("doGet", () => {
     expect(conditionsSheet.getDataRange).not.toHaveBeenCalled();
     expect(settingSheet.getDataRange).toHaveBeenCalled();
     expect(statusRange.getValue).toHaveBeenCalled();
+  });
+
+  it("returns plain JSON instead of JSONP for an invalid callback", async () => {
+    const settings = buildSettings();
+    const { module, outputState } = await loadCode({
+      conditionsLastRow: 4,
+      conditionsHeaders: ["Date", "Temperature", "Humid"],
+      conditionsRowValues: [new Date(0), 24.5, 38],
+      settingsValues: settingsValuesFrom(settings),
+    });
+
+    module.doGet({
+      parameter: {
+        callback: "alert(1)//",
+      },
+    });
+
+    expect(outputState.mimeType).toBe("application/json");
+    const parsed = JSON.parse(outputState.content);
+    expect(parsed.conditions).toHaveLength(1);
+    expect(parsed.status).toBe("off");
+    expect(outputState.content).not.toContain("alert(1)");
   });
 });
 

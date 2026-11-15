@@ -102,6 +102,26 @@ const serializeConditions = (headers, rows) =>
 const buildJsonpResponse = (callback, data) =>
   `${callback}&&${callback}(${JSON.stringify(data)});`;
 
+// The write path (no callback) changes the spreadsheet that turnOnAC
+// acts on, so it requires the shared token stored in the WRITE_TOKEN
+// script property. Callers (the home server ingest and the ha
+// frontend) send it as the `token` parameter. Fail closed: when the
+// property is not set, every write is rejected.
+const isAuthorizedWrite = (params) => {
+  const expected = PropertiesService.getScriptProperties().getProperty(
+    "WRITE_TOKEN"
+  );
+  return Boolean(expected) && params.token === expected;
+};
+
+// Same callback shape accepted by the other freddiefujiwara.com GAS
+// endpoints: a plain identifier path, nothing else.
+const CALLBACK_PATTERN =
+  /^[A-Za-z_$][0-9A-Za-z_$]*(\.[A-Za-z_$][0-9A-Za-z_$]*)*$/;
+
+const isValidCallback = (callback) =>
+  typeof callback === "string" && CALLBACK_PATTERN.test(callback);
+
 const getRowValues = (sheet, row, lastColumn) =>
   sheet.getRange(row, 1, 1, lastColumn).getValues()[0];
 
@@ -167,10 +187,14 @@ const AC_ACTIONS = [
 export function doGet(e) {
   const output = ContentService.createTextOutput();
   const params = e?.parameter ?? {};
-  const sheets = getSheets();
 
   if (params.callback === undefined) {
     output.setMimeType(ContentService.MimeType.TEXT);
+    if (!isAuthorizedWrite(params)) {
+      output.setContent("NG");
+      return output;
+    }
+    const sheets = getSheets();
     if (params.s === "status") {
       setStatus(params.t, sheets);
     } else {
@@ -183,8 +207,17 @@ export function doGet(e) {
     return output;
   }
 
-  output.setMimeType(ContentService.MimeType.JAVASCRIPT);
+  const sheets = getSheets();
   const payload = buildConditionsPayload(sheets);
+  if (!isValidCallback(params.callback)) {
+    // Never reflect an untrusted callback into a JavaScript response;
+    // fall back to plain JSON, which carries the same payload.
+    output.setMimeType(ContentService.MimeType.JSON);
+    output.setContent(JSON.stringify(payload));
+    return output;
+  }
+
+  output.setMimeType(ContentService.MimeType.JAVASCRIPT);
   output.setContent(buildJsonpResponse(params.callback, payload));
   return output;
 }

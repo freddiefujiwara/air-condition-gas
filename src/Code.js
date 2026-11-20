@@ -80,9 +80,17 @@ const getSettings = (sheets = getSheets()) => {
 };
 
 const formatJapanTime = (value) => {
-  const dt = new Date(
-    new Date(value).toLocaleString("en-US", { timeZone: "Asia/Tokyo" })
-  );
+  let dt;
+  try {
+    dt = new Date(
+      new Date(value).toLocaleString("en-US", { timeZone: "Asia/Tokyo" })
+    );
+  } catch (ignored) {
+    // A cell value that cannot even be converted (an object without a
+    // usable toString, a symbol, ...) must not kill the whole payload;
+    // the Date field simply reads empty.
+    return "";
+  }
   return `${dt.toLocaleDateString()} ${dt.toLocaleTimeString()}`;
 };
 
@@ -139,8 +147,23 @@ const buildConditionsPayload = (sheets) => {
   };
 };
 
+// Sheet cells are outside input: only a finite number or a non-blank
+// numeric string counts as a value. Anything else (blank, boolean,
+// Date, array, object) is no value at all — a bare Number() would
+// invent one (true -> 1, a Date -> its epoch milliseconds, "" -> 0)
+// and the automation would act on the invented number.
+const numericCellValue_ = (value) => {
+  const parsed =
+    typeof value === "number"
+      ? value
+      : typeof value === "string" && value.trim() !== ""
+        ? Number(value)
+        : NaN;
+  return Number.isFinite(parsed) ? parsed : NaN;
+};
+
 const getLatestTemperature = (sheets) =>
-  Number(
+  numericCellValue_(
     sheets.conditions
       .getRange(
         getConditionsLastRow(sheets),
@@ -153,7 +176,9 @@ const AC_ACTIONS = [
   {
     name: "hot_on",
     shouldRun: ({ temperature, statusValue, settings }) =>
-      temperature <= settings.hot_buttom && statusValue === "off",
+      temperature <= settings.hot_buttom &&
+      statusValue === "off" &&
+      Number.isFinite(numericCellValue_(settings.hot)),
     acCommand: ({ settings }) => `${settings.hot},5,1,on`,
     customCommand: "Hot",
     nextStatus: "hot",
@@ -177,12 +202,22 @@ const AC_ACTIONS = [
   {
     name: "cool_on",
     shouldRun: ({ temperature, statusValue, settings }) =>
-      temperature >= settings.cool_up && statusValue === "off",
+      temperature >= settings.cool_up &&
+      statusValue === "off" &&
+      Number.isFinite(numericCellValue_(settings.cool)),
     acCommand: ({ settings }) => `${settings.cool},2,1,on`,
     customCommand: "Cool",
     nextStatus: "cool",
   },
 ];
+
+// The status cell is the automation's state: turnOnAC only acts on
+// "off" / "hot" / "cool", and the ha frontend's fourth value
+// "control" parks the A/C under manual control. Anything else stored
+// here would silently disable the automation and be displayed by ha
+// as the A/C state, so an unknown status is rejected like a bad
+// token and the stored state is left untouched.
+const KNOWN_STATUSES = ["off", "hot", "cool", "control"];
 
 export function doGet(e) {
   const output = ContentService.createTextOutput();
@@ -196,6 +231,10 @@ export function doGet(e) {
     }
     const sheets = getSheets();
     if (params.s === "status") {
+      if (!KNOWN_STATUSES.includes(params.t)) {
+        output.setContent("NG");
+        return output;
+      }
       setStatus(params.t, sheets);
     } else {
       appendConditionRow({
